@@ -7,9 +7,15 @@ in a filename with contents that are formatted like:
     email=....
     password=....
 
-You need to use your mytesla login credentials. Execute the application like:
+You need to use your mytesla login credentials. To build the application use maven:
 
-    java -jar target/teslalogger.jar -c auth.properties
+    mvn install
+
+Or download it from my Dropbox: http://dl.dropbox.com/u/3924269/teslalogger.jar
+
+Execute the application like:
+
+    java -jar teslalogger.jar -c auth.properties
 
 If you nohup it you can run it in the background on a server somewhere.
 

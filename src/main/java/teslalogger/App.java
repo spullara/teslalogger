@@ -30,7 +30,7 @@ import java.util.logging.Logger;
  */
 public class App {
 
-  private static final int _5_MIN_MILLIS = 300000;
+  private static final int _1_MIN_MILLIS = 60000;
   private static DefaultHttpClient client;
   private static MappingJsonFactory jf;
   private static String baseURL;
@@ -38,6 +38,9 @@ public class App {
 
   @Argument(alias = "c", description = "Name of the authentication properties file", required = true)
   private static String config;
+
+  @Argument(alias = "p", description = "Minutes between log entries")
+  private static Integer period = 5;
 
   public static void main(String[] args) throws Exception {
     Properties auth = new Properties();
@@ -86,7 +89,7 @@ public class App {
                   logger.info("Successfully reported vehicle information for " + vehicleId);
                 }
               }
-              Thread.sleep(_5_MIN_MILLIS);
+              Thread.sleep(period * _1_MIN_MILLIS);
             }
           }
         }
@@ -94,7 +97,7 @@ public class App {
         logger.log(Level.SEVERE, "Failed to get vehicle information", e);
         client.getConnectionManager().shutdown();
         client = new DefaultHttpClient();
-        Thread.sleep(_5_MIN_MILLIS);
+        Thread.sleep(period * _1_MIN_MILLIS);
       }
     }
   }

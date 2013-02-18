@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
 import com.google.common.io.ByteStreams;
+import com.sampullara.cli.Args;
+import com.sampullara.cli.Argument;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
@@ -12,6 +14,7 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,6 +22,8 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.Arrays;
 import java.util.Properties;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Read a Tesla vehicles current status and log it every 5 minutes.
@@ -29,50 +34,67 @@ public class App {
   private static DefaultHttpClient client;
   private static MappingJsonFactory jf;
   private static String baseURL;
+  private static Logger logger = Logger.getLogger("Tesla");
+
+  @Argument(alias = "c", description = "Name of the authentication properties file", required = true)
+  private static String config;
 
   public static void main(String[] args) throws Exception {
     Properties auth = new Properties();
-    auth.load(App.class.getResourceAsStream("/auth.properties"));
+    try {
+      Args.parse(App.class, args);
+      auth.load(new FileInputStream(config));
+    } catch (IllegalArgumentException e) {
+      System.err.println(e.getMessage());
+      Args.usage(App.class);
+      System.exit(1);
+    }
 
     jf = new MappingJsonFactory();
     client = new DefaultHttpClient();
     baseURL = "https://portal.vn.teslamotors.com/";
-    HttpPost login = new HttpPost(baseURL + "login");
-    BasicNameValuePair email = new BasicNameValuePair("user_session[email]", auth.getProperty("email"));
-    BasicNameValuePair password = new BasicNameValuePair("user_session[password]", auth.getProperty("password"));
-    login.setEntity(new UrlEncodedFormEntity(Arrays.asList(email, password)));
-    HttpResponse loginResponse = client.execute(login);
-    if (loginResponse.getStatusLine().getStatusCode() == 302) {
-      if (loginResponse.getFirstHeader("Location").getValue().equals(baseURL)) {
-        login.releaseConnection();
-        while (true) {
-          JsonNode vehiclesArray = getResult("vehicles");
-          for (JsonNode vehicle : vehiclesArray) {
-            String state = vehicle.get("state").asText();
-            if (state.equals("online")) {
-              long vehicleId = vehicle.get("id").asLong();
-              JsonNode chargeState = getResult("vehicles/" + vehicleId + "/command/charge_state");
-              JsonNode climateState = getResult("vehicles/" + vehicleId + "/command/climate_state");
-              JsonNode driveState = getResult("vehicles/" + vehicleId + "/command/drive_state");
-              JsonNode guiSettings = getResult("vehicles/" + vehicleId + "/command/gui_settings");
-              JsonNode vehicleState = getResult("vehicles/" + vehicleId + "/command/vehicle_state");
-              Writer log = new OutputStreamWriter(new FileOutputStream("vehicle_" + vehicleId + ".log", true), "UTF-8");
-              JsonGenerator logentry = jf.createGenerator(log);
-              logentry.writeStartObject();
-              logentry.writeObjectField("vehicle", vehicle);
-              logentry.writeObjectField("state", vehicleState);
-              logentry.writeObjectField("charge", chargeState);
-              logentry.writeObjectField("climate", climateState);
-              logentry.writeObjectField("drive", driveState);
-              logentry.writeObjectField("settings", guiSettings);
-              logentry.writeEndObject();
-              logentry.flush();
-              log.write("\n");
-              log.close();
+    while (true) {
+      try {
+        HttpPost login = new HttpPost(baseURL + "login");
+        BasicNameValuePair email = new BasicNameValuePair("user_session[email]", auth.getProperty("email"));
+        BasicNameValuePair password = new BasicNameValuePair("user_session[password]", auth.getProperty("password"));
+        login.setEntity(new UrlEncodedFormEntity(Arrays.asList(email, password)));
+        HttpResponse loginResponse = client.execute(login);
+        if (loginResponse.getStatusLine().getStatusCode() == 302) {
+          if (loginResponse.getFirstHeader("Location").getValue().equals(baseURL)) {
+            login.releaseConnection();
+            logger.log(Level.INFO, "Successfully connected to Tesla");
+            while (true) {
+              JsonNode vehiclesArray = getResult("vehicles");
+              for (JsonNode vehicle : vehiclesArray) {
+                String state = vehicle.get("state").asText();
+                if (state.equals("online")) {
+                  long vehicleId = vehicle.get("id").asLong();
+                  Writer log = new OutputStreamWriter(new FileOutputStream("vehicle_" + vehicleId + ".log", true), "UTF-8");
+                  JsonGenerator logentry = jf.createGenerator(log);
+                  logentry.writeStartObject();
+                  logentry.writeObjectField("vehicle", vehicle);
+                  logentry.writeObjectField("state", getResult("vehicles/" + vehicleId + "/command/vehicle_state"));
+                  logentry.writeObjectField("charge", getResult("vehicles/" + vehicleId + "/command/charge_state"));
+                  logentry.writeObjectField("climate", getResult("vehicles/" + vehicleId + "/command/climate_state"));
+                  logentry.writeObjectField("drive", getResult("vehicles/" + vehicleId + "/command/drive_state"));
+                  logentry.writeObjectField("settings", getResult("vehicles/" + vehicleId + "/command/gui_settings"));
+                  logentry.writeEndObject();
+                  logentry.flush();
+                  log.write("\n");
+                  log.close();
+                  logger.info("Successfully reported vehicle information for " + vehicleId);
+                }
+              }
+              Thread.sleep(_5_MIN_MILLIS);
             }
           }
-          Thread.sleep(_5_MIN_MILLIS);
         }
+      } catch (Exception e) {
+        logger.log(Level.SEVERE, "Failed to get vehicle information", e);
+        client.getConnectionManager().shutdown();
+        client = new DefaultHttpClient();
+        Thread.sleep(_5_MIN_MILLIS);
       }
     }
   }
@@ -91,11 +113,5 @@ public class App {
       System.out.println("Failed to parse: " + new String(baos.toByteArray()));
       throw e;
     }
-  }
-
-  private void call(String url) throws IOException {
-    HttpGet get = new HttpGet(baseURL + url);
-    client.execute(get);
-    get.releaseConnection();
   }
 }

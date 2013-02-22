@@ -74,30 +74,14 @@ public class BatteryReminder {
               JsonNode chargingState = chargeState.get("charging_state");
               if ("Disconnected".equals(chargingState.asText())) {
                 // Not connected to the power
-                DefaultHttpClient client = new DefaultHttpClient();
+                byte[] buf = createAlert(alertAuth);
+                DefaultHttpClient client = createClient(alertAuth);
                 HttpPost post = new HttpPost("https://launch.alertrocket.com/api/push");
-                BasicCredentialsProvider credsProvider = new BasicCredentialsProvider();
-                UsernamePasswordCredentials credentials = new UsernamePasswordCredentials(alertAuth.getProperty("configKey"), alertAuth.getProperty("secretKey"));
-                credsProvider.setCredentials(AuthScope.ANY, credentials);
-                client.setCredentialsProvider(credsProvider);
-                JsonFactory jf = new MappingJsonFactory();
-                ByteArrayOutputStream out = new ByteArrayOutputStream();
-                JsonGenerator g = jf.createGenerator(out);
-                g.writeStartObject();
-                g.writeStringField("alert", "Connect your Tesla to the charger");
-                g.writeStringField("url", "http://launch.alertrocket.com/demo");
-                g.writeArrayFieldStart("device_tokens");
-                g.writeString(alertAuth.getProperty("token"));
-                g.writeEndArray();
-                g.writeEndObject();
-                g.flush();
-                byte[] buf = out.toByteArray();
-                System.out.println(new String(buf));
                 post.setEntity(new ByteArrayEntity(buf, ContentType.APPLICATION_JSON));
                 HttpResponse response = client.execute(post);
-                response.getEntity().writeTo(System.out);
                 response.getStatusLine();
                 client.getConnectionManager().shutdown();
+                System.out.println("Charger disconnected, sending notification");
               } else {
                 System.out.println("Plugged in");
               }
@@ -128,5 +112,29 @@ public class BatteryReminder {
         return v * Math.PI / 180;
       }
     });
+  }
+
+  private static DefaultHttpClient createClient(Properties alertAuth) {
+    DefaultHttpClient client = new DefaultHttpClient();
+    BasicCredentialsProvider credsProvider = new BasicCredentialsProvider();
+    UsernamePasswordCredentials credentials = new UsernamePasswordCredentials(alertAuth.getProperty("configKey"), alertAuth.getProperty("secretKey"));
+    credsProvider.setCredentials(AuthScope.ANY, credentials);
+    client.setCredentialsProvider(credsProvider);
+    return client;
+  }
+
+  private static byte[] createAlert(Properties alertAuth) throws IOException {
+    JsonFactory jf = new MappingJsonFactory();
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    JsonGenerator g = jf.createGenerator(out);
+    g.writeStartObject();
+    g.writeStringField("alert", "Connect your Tesla to the charger");
+    g.writeStringField("url", "http://launch.alertrocket.com/demo");
+    g.writeArrayFieldStart("device_tokens");
+    g.writeString(alertAuth.getProperty("token"));
+    g.writeEndArray();
+    g.writeEndObject();
+    g.flush();
+    return out.toByteArray();
   }
 }

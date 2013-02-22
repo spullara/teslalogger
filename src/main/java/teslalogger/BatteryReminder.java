@@ -51,7 +51,7 @@ public class BatteryReminder {
       alertAuth.load(new FileInputStream(alertrocket));
     } catch (IllegalArgumentException e) {
       System.err.println(e.getMessage());
-      Args.usage(App.class);
+      Args.usage(BatteryReminder.class);
       System.exit(1);
     }
 

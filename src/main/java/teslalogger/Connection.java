@@ -28,7 +28,7 @@ import java.util.logging.Logger;
 public class Connection {
   private static final int _1_MIN_MILLIS = 60000;
   private final Properties config;
-  private Logger logger = Logger.getLogger("Tesla");
+  public Logger logger = Logger.getLogger("Tesla");
   private DefaultHttpClient client = new DefaultHttpClient();
   private MappingJsonFactory jf= new MappingJsonFactory();
   private String baseURL = "https://portal.vn.teslamotors.com/";

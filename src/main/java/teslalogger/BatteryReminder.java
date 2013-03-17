@@ -55,10 +55,14 @@ public class BatteryReminder {
       System.exit(1);
     }
 
+    final Connection connection = new Connection(auth, 5);
+    batteryReminder(connection, alertAuth);
+  }
+
+  public static void batteryReminder(final Connection connection, final Properties alertAuth) throws InterruptedException {
     // Home location
     final double lat2 = Double.parseDouble(location[0]);
     final double lon2 = Double.parseDouble(location[1]);
-    final Connection connection = new Connection(auth, 5);
     connection.monitorTesla(new Connection.VehicleCaller() {
       @Override
       public boolean call(long vehicleId, JsonNode vehicle) {

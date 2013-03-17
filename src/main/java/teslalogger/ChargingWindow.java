@@ -21,7 +21,7 @@ import java.util.Properties;
  * Time: 10:50 AM
  */
 public class ChargingWindow {
-  @Argument(alias = "c", description = "Name of the authentication properties file", required = true)
+  @Argument(alias = "c", description = "Name of the configuration properties file", required = true)
   private static File config;
 
   @Argument(alias = "l", description = "Latitude, Longitude of your home charger", required = true)
@@ -36,12 +36,12 @@ public class ChargingWindow {
   private static DateFormat format = new SimpleDateFormat("HH:mm");
 
   public static void main(String[] args) throws IOException, InterruptedException, ParseException {
-    Properties auth = new Properties();
+    Properties properties = new Properties();
     final double startTime;
     final double endTime;
     try {
       Args.parse(ChargingWindow.class, args);
-      auth.load(new FileInputStream(config));
+      properties.load(new FileInputStream(config));
       startTime = parse(start);
       endTime = parse(end);
     } catch (IllegalArgumentException e) {
@@ -51,10 +51,13 @@ public class ChargingWindow {
       return;
     }
 
+    final Connection connection = new Connection(properties, 5);
+    chargingWindow(connection, startTime, endTime, Double.parseDouble(location[0]), Double.parseDouble(location[1]));
+
+  }
+
+  public static void chargingWindow(final Connection connection, final double startTime, final double endTime, final double lat2, final double lon2) throws InterruptedException {
     // Home location
-    final double lat2 = Double.parseDouble(location[0]);
-    final double lon2 = Double.parseDouble(location[1]);
-    final Connection connection = new Connection(auth, 5);
     connection.monitorTesla(new Connection.VehicleCaller() {
       @Override
       public boolean call(long vehicleId, JsonNode vehicle) {
@@ -78,6 +81,8 @@ public class ChargingWindow {
                     // Currently stopped
                     System.out.println("Starting charging");
                     connection.getResult("vehicles/" + vehicleId + "/command/charge_start");
+                  } else {
+                    System.out.println("Vehicle already charging");
                   }
                 } else {
                   // Outside the zone
@@ -85,9 +90,15 @@ public class ChargingWindow {
                     // Currently started
                     System.out.println("Stopping charging");
                     connection.getResult("vehicles/" + vehicleId + "/command/charge_stop");
+                  } else {
+                    System.out.println("Vehicle already not charging");
                   }
                 }
+              } else {
+                System.out.println("Vehicle not plugged in");
               }
+            } else {
+              System.out.println("Vehicle not at home");
             }
           }
 

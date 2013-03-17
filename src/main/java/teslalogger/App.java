@@ -35,6 +35,10 @@ public class App {
     }
 
     final Connection connection = new Connection(auth, period);
+    logging(connection);
+  }
+
+  public static void logging(final Connection connection) throws InterruptedException {
     connection.monitorTesla(new Connection.VehicleCaller() {
       MappingJsonFactory jf = new MappingJsonFactory();
 

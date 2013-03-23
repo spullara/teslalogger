@@ -10,7 +10,9 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -29,10 +31,10 @@ public class ChargingWindow {
   @Argument(alias = "l", description = "Latitude, Longitude of your home charger, if no location given uses current location")
   private static String[] location;
 
-  @Argument(alias = "s", description = "Start HH:mm time of window in 24-hour local time, e.g. 00:00 is midnight")
+  @Argument(alias = "s", description = "Start HH:mm time of window in 24-hour local time, e.g. 00:00 is midnight", required = true)
   private static String start;
 
-  @Argument(alias = "e", description = "End HH:mm time of window in 24-hour local time, e.g. 07:00 is 7am")
+  @Argument(alias = "e", description = "End HH:mm time of window in 24-hour local time, e.g. 07:00 is 7am", required = true)
   private static String end;
 
   @Argument(alias = "p", description = "Minutes between checks of charging state")
@@ -72,8 +74,11 @@ public class ChargingWindow {
 
       @Override
       public boolean call(long vehicleId, JsonNode vehicle) {
+        List<Object> debug = new ArrayList<>();
+        debug.add(vehicle);
         try {
           JsonNode driveState = connection.getResult("vehicles/" + vehicleId + "/command/drive_state");
+          debug.add(driveState);
           JsonNode shiftState = driveState.get("shift_state");
           if (shiftState == null || shiftState.isNull()) {
             // Not driving around
@@ -88,6 +93,7 @@ public class ChargingWindow {
             if (d < .05) {
               // 50 meters, certainly at home
               JsonNode chargeState = connection.getResult("vehicles/" + vehicleId + "/command/charge_state");
+              debug.add(chargeState);
               JsonNode chargingState = chargeState.get("charging_state");
               String charging = chargingState.asText();
               if (!"Disconnected".equals(charging)) {
@@ -98,7 +104,7 @@ public class ChargingWindow {
                   if (charging.equals("Stopped")) {
                     // Currently stopped
                     log.info("Starting charging");
-                    connection.getResult("vehicles/" + vehicleId + "/command/charge_start");
+                    debug.add(connection.getResult("vehicles/" + vehicleId + "/command/charge_start"));
                   } else {
                     log.info("Vehicle already charging");
                   }
@@ -107,7 +113,7 @@ public class ChargingWindow {
                   if (charging.equals("Charging")) {
                     // Currently started
                     log.info("Stopping charging");
-                    connection.getResult("vehicles/" + vehicleId + "/command/charge_stop");
+                    debug.add(connection.getResult("vehicles/" + vehicleId + "/command/charge_stop"));
                   } else {
                     log.info("Vehicle already not charging");
                   }
@@ -122,7 +128,7 @@ public class ChargingWindow {
 
           return true;
         } catch (Exception e) {
-          log.log(Level.SEVERE, "Failed", e);
+          log.log(Level.SEVERE, "Failed: " + debug, e);
           return false;
         }
       }

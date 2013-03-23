@@ -53,14 +53,14 @@
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>
         <configuration>
-          <finalName>teslalogger</finalName>
+          <finalName>teslacharger</finalName>
           <appendAssemblyId>false</appendAssemblyId>
           <descriptorRefs>
             <descriptorRef>jar-with-dependencies</descriptorRef>
           </descriptorRefs>
           <archive>
             <manifest>
-              <mainClass>teslalogger.App</mainClass>
+              <mainClass>teslalogger.ChargingWindow</mainClass>
             </manifest>
           </archive>
         </configuration>

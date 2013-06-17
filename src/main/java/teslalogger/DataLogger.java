@@ -15,7 +15,7 @@ import java.util.Properties;
 /**
  * Read a Tesla vehicles current status and log it every 5 minutes.
  */
-public class App {
+public class DataLogger {
 
   @Argument(alias = "c", description = "Name of the authentication properties file", required = true)
   private static String config;
@@ -26,11 +26,11 @@ public class App {
   public static void main(String[] args) throws Exception {
     Properties auth = new Properties();
     try {
-      Args.parse(App.class, args);
+      Args.parse(DataLogger.class, args);
       auth.load(new FileInputStream(config));
     } catch (IllegalArgumentException e) {
       System.err.println(e.getMessage());
-      Args.usage(App.class);
+      Args.usage(DataLogger.class);
       System.exit(1);
     }
 

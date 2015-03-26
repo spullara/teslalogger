@@ -26,11 +26,14 @@ public class DataLogger {
   @Argument(alias = "h", description = "Hosts to report metrics")
   private static String[] hosts;
 
+  private static String token;
+
   public static void main(String[] args) throws Exception {
     Properties auth = new Properties();
     try {
       Args.parse(DataLogger.class, args);
       auth.load(new FileInputStream(config));
+      token = auth.getProperty("token");
     } catch (IllegalArgumentException e) {
       System.err.println(e.getMessage());
       Args.usage(DataLogger.class);
@@ -83,7 +86,7 @@ public class DataLogger {
   }
 
   private static void send(byte[] bytes, String host) throws IOException {
-    URL url = new URL("http://" + host + "/report/metrics?t=tsdb&h=discusstesla.com&p=vehicle");
+    URL url = new URL("https://" + host + "/report/metrics?t=" + token + "&h=discusstesla.com&p=vehicle");
     HttpURLConnection urlc = (HttpURLConnection) url.openConnection();
     urlc.setDoOutput(true);
     urlc.addRequestProperty("Content-Type", "application/json");

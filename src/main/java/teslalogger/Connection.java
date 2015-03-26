@@ -42,6 +42,8 @@ public class Connection {
   public void monitorTesla(VehicleCaller execute) throws InterruptedException {
     while (true) {
       try {
+        HttpGet loginPage = new HttpGet(baseURL + "login");
+        client.execute(loginPage).getStatusLine();
         HttpPost login = new HttpPost(baseURL + "login");
         BasicNameValuePair email = new BasicNameValuePair("user_session[email]", config.getProperty("email"));
         BasicNameValuePair password = new BasicNameValuePair("user_session[password]", config.getProperty("password"));
@@ -66,6 +68,10 @@ public class Connection {
               Thread.sleep(period * _1_MIN_MILLIS);
             }
           }
+        } else {
+          login.releaseConnection();
+          logger.info("Connected and got status: " + loginResponse.getStatusLine().getStatusCode());
+          Thread.sleep(10000);
         }
       } catch (Exception e) {
         logger.log(Level.SEVERE, "Failed to get vehicle information", e);
